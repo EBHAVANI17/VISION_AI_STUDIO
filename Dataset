@@ -1,13 +1,1 @@
-## Dataset Information
 
-This project uses the COCO (Common Objects in Context) dataset
-for image segmentation and image captioning tasks.
-
-Due to large size, the dataset is not uploaded to GitHub.
-
-### Download Dataset
-https://cocodataset.org/
-
-### Folder Structure
-Place the downloaded dataset inside this folder:
-Dataset/COCO_DATASET/
