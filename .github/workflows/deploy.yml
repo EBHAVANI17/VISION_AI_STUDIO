@@ -1,0 +1,39 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Push Docker Space
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Space payload
+        run: |
+          rm -rf .git
+          cp space/README.md README.md
+
+      - name: Push to Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HF_TOKEN:-}" ] || [ -z "${HF_SPACE:-}" ]; then
+            echo "Set the HF_TOKEN secret and the HF_SPACE variable (e.g. user/vision-ai-studio)."
+            exit 1
+          fi
+          git init -b main
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy ${GITHUB_SHA::7}"
+          git remote add space "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}"
+          git push --force space main

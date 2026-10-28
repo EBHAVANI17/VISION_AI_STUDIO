@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vision-ai-studio"
+version = "0.1.0"
+description = "Image segmentation, captioning, translation and speech in a single pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Bhavani E" }]
+keywords = ["computer-vision", "segmentation", "captioning", "blip", "deeplab", "segformer"]
+dependencies = [
+  "numpy>=1.26",
+  "pillow>=10.0",
+  "torch>=2.2",
+  "torchvision>=0.17",
+  "transformers>=4.44,<6",
+  "huggingface-hub>=0.23",
+  "gtts>=2.5",
+  "deep-translator>=1.11",
+]
+
+[project.optional-dependencies]
+ui = ["streamlit>=1.49"]
+lora = ["peft>=0.11"]
+eval = ["pycocotools>=2.0.7", "pycocoevalcap>=1.2"]
+dev = [
+  "pytest>=8",
+  "pytest-cov>=5",
+  "ruff>=0.6",
+  "mypy>=1.10",
+  "streamlit>=1.49",
+  "nbstripout>=0.7",
+  "detect-secrets>=1.5",
+  "pre-commit>=3.7",
+]
+
+[project.scripts]
+vas = "vision_ai_studio.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vision_ai_studio"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "app", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# The app prepends the repo root to sys.path before importing the package.
+"app/streamlit_app.py" = ["E402", "RUF001"]  # RUF001: intentional "×" in UI copy
+"app/components.py" = ["RUF001"]
+
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "src"
+packages = ["vision_ai_studio"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = true
+warn_return_any = true
+no_implicit_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "slow: downloads model weights or needs a network connection",
+]

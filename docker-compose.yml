@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        PREFETCH_TRANSLATOR: none
+    image: vision-ai-studio:local
+    ports:
+      - "7860:7860"
+    environment:
+      VAS_SEGMENTER: ade
+      VAS_CAPTIONER: blip-base
+      VAS_DEVICE: cpu
+    restart: unless-stopped

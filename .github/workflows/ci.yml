@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, type-check, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install CPU torch
+        run: pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+      - name: Install project
+        run: pip install -e ".[ui,dev]"
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format
+        run: ruff format --check .
+      - name: mypy
+        run: mypy
+      - name: Tests
+        run: pytest -m "not slow"
+      - name: CLI smoke test
+        run: python -m vision_ai_studio.cli info --models fake
+
+  docker:
+    name: Build container
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: vision-ai-studio:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Container health check
+        run: |
+          docker run -d --name vas -p 7860:7860 vision-ai-studio:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:7860/_stcore/health; then exit 0; fi
+            sleep 3
+          done
+          docker logs vas
+          exit 1
