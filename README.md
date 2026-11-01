@@ -24,6 +24,22 @@ Live demo: _add the Hugging Face Space URL here after the first deploy._
 
 Everything is downloadable as PNG (overlay, mask) and JSON (full result, model versions, timings).
 
+## Measured results
+
+Frozen checkpoints, CPU, 300-image random samples (seed 0), pinned revisions — full protocol,
+per-class tables and failure analysis in [`docs/RESULTS.md`](docs/RESULTS.md):
+
+| Task | Model | Dataset | Result |
+|---|---|---|---|
+| Segmentation | DeepLabV3-R50 (COCO/VOC-21) | COCO val2017 | foreground mIoU **0.5947**, pixel acc 0.9269 |
+| Segmentation | SegFormer-B2 (ADE20K-150) | ADE20K val | mIoU **0.4480**, pixel acc 0.8150 |
+| Captioning | BLIP base | COCO val2017 | CIDEr **0.8266**, BLEU-4 0.2555, ROUGE-L 0.4375 |
+| Latency | BLIP + SegFormer-B2 | 512→2048 px | p50 **6.5–9.7 s** on 4 CPU threads |
+
+The evaluation also produces an error-analysis report (weakest classes, truth→prediction
+confusions, over/under-segmentation, worst images, caption failure modes), so the numbers come with
+an explanation of where the models break.
+
 ## Architecture
 
 The Streamlit app is a thin layer over a reusable core. The same core powers the CLI, the tests
@@ -41,6 +57,7 @@ src/vision_ai_studio/
   models/translator.py      NLLB, Google, null
   viz/                      deterministic palette, overlay + mask rendering
   stats.py                  mask -> ranked segments
+  analysis.py               evaluation helpers: confusions, worst images, token F1
   tts.py                    gTTS with content-hash caching
   cli.py                    `vas analyze | prefetch | info`
         |
@@ -175,16 +192,21 @@ See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for manual deployment, rollback a
 ## Evaluation
 
 The harness evaluates both segmentation backends and the captioner on the datasets each model was
-trained for. See [`docs/EVALUATION.md`](docs/EVALUATION.md) and [`docs/RESULTS.md`](docs/RESULTS.md).
+trained for, then turns the reports into an error analysis. See
+[`docs/EVALUATION.md`](docs/EVALUATION.md) for the protocol and [`docs/RESULTS.md`](docs/RESULTS.md)
+for the measured numbers and caveats.
 
 ```bash
 python scripts/download_coco.py --dest data/coco --splits val2017 --annotations
-python scripts/evaluate_segmentation.py --mode coco-voc --coco-root data/coco --limit 500
-python scripts/evaluate_segmentation.py --mode ade --images data/ADEChallengeData2016/images/validation \
-    --masks data/ADEChallengeData2016/annotations/validation
-python scripts/evaluate_captioning.py --coco-root data/coco --limit 500
-python scripts/benchmark.py --image tests/fixtures/sample.jpg
+
+make eval-seg       # both segmenters, 300 images, seed 0, max-edge 640
+make eval-caption   # BLIP base, 300 images, beam 1
+make eval-report    # artifacts/eval/analysis.md
+make benchmark      # CPU latency at 512/1024/2048 px
 ```
+
+Reports include the full confusion matrix, per-image rows and the pinned model revision, so the
+analysis can be re-run without inference.
 
 ## Models and licenses
 
@@ -207,6 +229,8 @@ commercial deployment. COCO images and annotations are not redistributed here.
 - [x] Docker image, CI, HF Space deploy workflow
 - [x] Fast test suite with fakes and UI tests
 - [x] COCO/ADE evaluation and benchmark scripts
+- [x] 300-image evaluation of both segmenters and BLIP with pinned revisions and error analysis
+- [ ] Full-validation evaluation and before/after fine-tuning metrics (next)
 - [ ] LoRA fine-tuning notebooks + scripts (next)
 - [ ] Model registry promotion flow, experiment tracking, monitored Space (next)
 

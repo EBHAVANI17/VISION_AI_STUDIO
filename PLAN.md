@@ -7,6 +7,11 @@
 Current repo state (baseline): one Colab notebook + README. No app, package, tests,
 pinned deps, CI, or deployment. Everything below is net-new.
 
+**Status (2026-11-01):** product, CLI, tests, Docker/CI and the evaluation harness are
+implemented. [`RESULTS.md`](docs/RESULTS.md) now has 300-image numbers for both segmenters and BLIP
+base, with pinned revisions and error analysis. Still open: BLIP large/LoRA and translation/speech
+metrics, full-validation runs, fine-tuning (Phase 5), and the MLOps layer (Phase 6).
+
 ---
 
 ## 1. Decisions
@@ -82,7 +87,7 @@ VISION_AI_STUDIO/
 │  ├─ prefetch_models.py         # used by Dockerfile and `make prefetch`
 │  ├─ evaluate_segmentation.py   # mIoU / per-class IoU / pixel acc → JSON + MD
 │  ├─ evaluate_captioning.py     # BLEU-1..4 / METEOR / ROUGE-L / CIDEr (SPICE optional)
-│  ├─ make_report.py             # results → docs/RESULTS.md + sample grids
+│  ├─ analyze_results.py         # reports → error analysis (classes, confusions, worst images)
 │  └─ benchmark.py               # latency p50/p95 by image size, CPU threads
 ├─ notebooks/                    # outputs stripped, thin wrappers only
 │  ├─ 01_exploration.ipynb       # migrated from the current notebook
@@ -260,8 +265,8 @@ model re-download; CI green on a clean clone.
   Compare BLIP-base / BLIP-large / LoRA adapter in one table.
 - Determinism: fixed image manifests (`manifests/coco_val_1000.json` with IDs + hashes), fixed seeds,
   raw per-image outputs cached under `artifacts/eval/` so re-scoring is offline.
-- `make_report.py` → `docs/RESULTS.md`: tables, latency table from `benchmark.py`,
-  and a 3×3 grid of qualitative examples (committed, small).
+- `analyze_results.py` → error analysis (weakest classes, confusions, ratios, worst images);
+  `docs/RESULTS.md` holds the curated tables, latency table and caveats.
 - Runtime test: eval scripts run on 50 images in CI-skipped mode (`--limit 50`), verified once
   manually; slow marker for full runs.
 

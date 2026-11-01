@@ -150,8 +150,11 @@ def _score(
     except ImportError as exc:
         return {}, {"all": f"pycocoevalcap unavailable: {exc}"}
 
-    def run(name: str, scorer, keys: list[str] | None = None) -> list[float] | None:
+    def run(name: str, make_scorer, keys: list[str] | None = None) -> list[float] | None:
+        # Some scorers fail in their constructor (METEOR needs a Java runtime), so build
+        # inside the guard instead of as an argument.
         try:
+            scorer = make_scorer()
             value, _ = scorer.compute_score(references, hypotheses)
             values = value if isinstance(value, list) else [value]
             values = [float(item) for item in values]
@@ -165,15 +168,15 @@ def _score(
             errors[name] = str(exc)[:200]
             return None
 
-    run("BLEU", Bleu(4), ["BLEU-1", "BLEU-2", "BLEU-3", "BLEU-4"])
-    run("METEOR", Meteor())
-    run("ROUGE-L", Rouge())
-    run("CIDEr", Cider())
+    run("BLEU", lambda: Bleu(4), ["BLEU-1", "BLEU-2", "BLEU-3", "BLEU-4"])
+    run("METEOR", Meteor)
+    run("ROUGE-L", Rouge)
+    run("CIDEr", Cider)
     if spice:
         try:
             from pycocoevalcap.spice.spice import Spice
 
-            run("SPICE", Spice())
+            run("SPICE", Spice)
         except ImportError as exc:
             errors["SPICE"] = f"unavailable: {exc}"
     return scores, errors

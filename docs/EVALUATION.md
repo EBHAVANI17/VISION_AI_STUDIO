@@ -92,16 +92,62 @@ Outputs:
 
 Metrics: BLEU-1..4, METEOR, ROUGE-L, CIDEr; add `--spice` for SPICE. Each metric is wrapped
 individually: a missing Java runtime records an error for that metric instead of aborting the run.
-References are the five COCO captions per image.
+References are the five COCO captions per image. Install a JRE (for example
+`apt-get install default-jre` in the container) to enable METEOR and SPICE.
+
+## Error analysis
+
+The evaluation reports contain the full confusion matrix and per-image rows, so the failure
+analysis does not need to re-run a model:
+
+```bash
+python scripts/analyze_results.py --limit 10
+```
+
+This writes `artifacts/eval/analysis.md` with, per segmentation track:
+
+- weakest and strongest classes (classes with no ground-truth pixels are excluded, so a 0.000 IoU
+  always means "present but always wrong");
+- the most frequent truth→prediction confusions with the share of the truth class they consume;
+- over- and under-segmentation ratios (predicted pixels / ground-truth pixels);
+- the worst images by per-image foreground mIoU.
+
+For captioning it adds the duplicate rate, caption-length distribution, a token-F1 ranking against
+the best reference, and the weakest captions. Token F1 is a triage signal for finding failure cases
+— BLEU and CIDEr remain the reported metrics. The captions are saved separately from the scores, so
+the analysis can be re-run without loading the model.
+
+Recommended loop for a change (new checkpoint, resize, decoding):
+
+1. run the 300-image evaluation with the same seed;
+2. run the analysis and compare the same tables, not just the headline mIoU;
+3. only then spend time on the full validation split.
 
 ## Benchmark
 
 ```bash
-python scripts/benchmark.py --image tests/fixtures/sample.jpg --sizes 512 1024 2048 --runs 3
+make benchmark
+# equivalent:
+python scripts/benchmark.py --image tests/fixtures/sample.jpg \
+    --seg ade --caption blip-base --sizes 512 1024 2048 --runs 3
 ```
 
 Reports total p50/p95 and per-stage medians, after a warm-up run that excludes model loading.
-Use the same machine and thread count when comparing commits.
+Use the same machine and thread count when comparing commits. Note that both models resize
+internally (SegFormer to 512 px, BLIP to 384 px), so larger inputs mostly add preprocessing,
+logit-upsampling and rendering cost rather than model compute.
+
+## Convenience targets
+
+```bash
+make eval-seg      # both segmenters, 300 images, seed 0, max-edge 640
+make eval-caption  # BLIP base, 300 images, beam 1
+make eval-report   # artifacts/eval/analysis.md
+make benchmark     # latency table above
+```
+
+Override the sample size with `make eval-seg EVAL_N=1000` (and `make eval-caption EVAL_N=1000`).
+`VAS_SEGMENTER_REVISION` / `VAS_CAPTION_REVISION` pin the HF revisions if `main` moves.
 
 ## Reproducibility
 
@@ -114,13 +160,15 @@ Use the same machine and thread count when comparing commits.
 
 ## Cost
 
-Rough CPU times per 1 000 images at `--max-edge 640`:
+Measured on the results machine (4 inference threads, desktop load ~70 %), `--max-edge 640`:
 
-| Step | Estimate |
+| Step | Observation |
 |---|---|
-| DeepLabV3-R50 inference | 25–45 min |
-| SegFormer-B2 inference | 20–35 min |
-| BLIP-base captioning | 30–60 min |
-| Scoring (caption metrics) | 1–3 min |
+| DeepLabV3-R50 on 300 COCO images | ~20 min (~4 s/image) |
+| SegFormer-B2 on 300 ADE images | ~23 min (~4.5 s/image) |
+| BLIP-base on 300 images + scoring | ~9 min (~1.7 s/image), scoring is seconds |
+| Error analysis (no model) | seconds |
 
-Use `--limit 100` while iterating.
+At those rates a 1 000-image segmentation run is roughly 65–75 min and a 1 000-image captioning
+run roughly 30 min. Use `--limit 100` while iterating; the run time scales linearly with the
+sample. Full per-image numbers are in [`RESULTS.md`](RESULTS.md).

@@ -136,6 +136,7 @@ def _run_coco(args: argparse.Namespace, segmenter, labels: list[str], output: Pa
 
     num_classes = len(labels)
     confusion = np.zeros((num_classes, num_classes), dtype=np.int64)
+    per_image: list[dict] = []
     evaluated = 0
     skipped = 0
     for index, image_id in enumerate(image_ids, start=1):
@@ -150,6 +151,9 @@ def _run_coco(args: argparse.Namespace, segmenter, labels: list[str], output: Pa
         ground_truth = _resize_mask(ground_truth, image.size)
         prediction = segmenter.predict(image).mask
         _accumulate(confusion, ground_truth, prediction, num_classes)
+        per_image.append(
+            _image_summary(ground_truth, prediction, labels, info["file_name"], num_classes)
+        )
         evaluated += 1
 
         if evaluated % 25 == 0 or index == len(image_ids):
@@ -170,6 +174,8 @@ def _run_coco(args: argparse.Namespace, segmenter, labels: list[str], output: Pa
             "skipped": skipped,
             "max_edge": args.max_edge,
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "confusion": confusion.tolist(),
+            "per_image": per_image,
             "caveats": [
                 "COCO's 80 thing categories map onto 20 VOC classes; unmapped categories count as background.",
                 "Crowd annotations are ignored.",
@@ -224,6 +230,7 @@ def _run_ade(args: argparse.Namespace, segmenter, labels: list[str], output: Pat
 def _evaluate_ade_pairs(pairs, segmenter, labels: list[str], args, output: Path) -> int:
     num_classes = len(labels)
     confusion = np.zeros((num_classes, num_classes), dtype=np.int64)
+    per_image: list[dict] = []
     for index, (image_path, mask_path) in enumerate(pairs, start=1):
         image = load_image(image_path, max_edge=args.max_edge)
         raw = np.asarray(Image.open(mask_path))
@@ -234,6 +241,9 @@ def _evaluate_ade_pairs(pairs, segmenter, labels: list[str], args, output: Path)
         ground_truth = _resize_mask(ground_truth, image.size)
         prediction = segmenter.predict(image).mask
         _accumulate(confusion, ground_truth, prediction, num_classes)
+        per_image.append(
+            _image_summary(ground_truth, prediction, labels, image_path.name, num_classes)
+        )
         if index % 25 == 0 or index == len(pairs):
             print(f"\r  evaluated {index}/{len(pairs)}", end="", flush=True)
     print()
@@ -248,6 +258,8 @@ def _evaluate_ade_pairs(pairs, segmenter, labels: list[str], args, output: Path)
             "skipped": 0,
             "max_edge": args.max_edge,
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "confusion": confusion.tolist(),
+            "per_image": per_image,
             "caveats": [
                 "ADE20K PNG labels are shifted by one: raw 1..150 -> model classes 0..149; raw 0/255 is ignored.",
                 f"Metrics at max-edge {args.max_edge}px.",
@@ -256,6 +268,25 @@ def _evaluate_ade_pairs(pairs, segmenter, labels: list[str], args, output: Path)
     )
     _finish(report, output)
     return 0
+
+
+def _image_summary(
+    ground_truth: np.ndarray,
+    prediction: np.ndarray,
+    labels: list[str],
+    name: str,
+    num_classes: int,
+) -> dict:
+    """Per-image scores used to rank worst cases during error analysis."""
+    confusion = np.zeros((num_classes, num_classes), dtype=np.int64)
+    _accumulate(confusion, ground_truth, prediction, num_classes)
+    report = _report(confusion, labels)
+    return {
+        "file": name,
+        "miou_foreground": report["miou_foreground"],
+        "pixel_accuracy": report["pixel_accuracy"],
+        "classes_present": sum(1 for row in report["classes"] if row["gt_pixels"] > 0),
+    }
 
 
 def _accumulate(
