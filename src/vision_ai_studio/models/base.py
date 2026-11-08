@@ -43,3 +43,10 @@ class Translator(Protocol):
     version: str
 
     def translate(self, text: str, target: str) -> str: ...
+
+
+class ObjectDetector(Protocol):
+    name: str
+    version: str
+
+    def detect(self, image: Image.Image, *, threshold: float = 0.25) -> list[Any]: ...

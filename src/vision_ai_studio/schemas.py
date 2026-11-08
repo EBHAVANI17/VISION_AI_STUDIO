@@ -24,6 +24,20 @@ class Segment:
 
 
 @dataclass(frozen=True)
+class DetectedObject:
+    label: str
+    confidence: float
+    box: tuple[float, float, float, float]  # (xmin, ymin, xmax, ymax)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "label": self.label,
+            "confidence": round(self.confidence, 4),
+            "box": [round(coord, 2) for coord in self.box],
+        }
+
+
+@dataclass(frozen=True)
 class AnalysisResult:
     caption: str
     segments: tuple[Segment, ...]
@@ -33,6 +47,7 @@ class AnalysisResult:
     mask_png: bytes
     translated: str | None = None
     target_lang: str | None = None
+    detections: tuple[DetectedObject, ...] = ()
     timings_ms: dict[str, float] = field(default_factory=dict)
     model_versions: dict[str, str] = field(default_factory=dict)
     warnings: tuple[str, ...] = ()
@@ -50,6 +65,7 @@ class AnalysisResult:
             "dominant_label": self.dominant_label,
             "image_size": {"width": self.image_size[0], "height": self.image_size[1]},
             "segments": [segment.to_dict() for segment in self.segments],
+            "detections": [d.to_dict() for d in self.detections],
             "timings_ms": {key: round(value, 2) for key, value in self.timings_ms.items()},
             "model_versions": dict(self.model_versions),
             "warnings": list(self.warnings),

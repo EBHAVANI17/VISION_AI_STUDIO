@@ -8,7 +8,7 @@ from time import perf_counter
 from PIL import Image
 
 from vision_ai_studio.config import Settings
-from vision_ai_studio.models.base import Captioner, Segmenter, Translator
+from vision_ai_studio.models.base import Captioner, ObjectDetector, Segmenter, Translator
 from vision_ai_studio.models.registry import (
     LazyTranslator,
     get_captioner,
@@ -26,6 +26,7 @@ class Models:
     segmenter: Segmenter
     captioner: Captioner
     translator: Translator | None = None
+    detector: ObjectDetector | None = None
 
 
 def build_models(settings: Settings) -> Models:
@@ -77,12 +78,23 @@ def analyze(
     segmentation = models.segmenter.predict(image)
     timings["segment"] = _elapsed_ms(tick)
 
+    detections = ()
+    if models.detector is not None:
+        tick = perf_counter()
+        try:
+            detections = tuple(models.detector.detect(image))
+        except Exception as exc:
+            warnings.append(f"Detection failed: {exc}")
+        timings["detect"] = _elapsed_ms(tick)
+
     mask = align_mask(segmentation.mask, image.size)
     segments = segment_stats(mask, segmentation.labels)
     dominant = dominant_label(segments)
 
     tick = perf_counter()
-    overlay_png, mask_png = render_pngs(image, mask, segmentation.labels, alpha=overlay_alpha)
+    overlay_png, mask_png = render_pngs(
+        image, mask, segmentation.labels, alpha=overlay_alpha, detections=detections
+    )
     timings["render"] = _elapsed_ms(tick)
 
     translated: str | None = None
@@ -114,11 +126,13 @@ def analyze(
         mask_png=mask_png,
         translated=translated,
         target_lang=lang if lang != "en" else None,
+        detections=detections,
         timings_ms=timings,
         model_versions={
             "segmenter": segmentation.version,
             "captioner": str(getattr(models.captioner, "version", models.captioner.name)),
             "translator": translator_version,
+            "detector": str(getattr(models.detector, "version", "none")) if models.detector else "none",
         },
         warnings=tuple(warnings),
     )

@@ -1,0 +1,34 @@
+# BLIP LoRA Captioner Fine-tuning Configuration
+base_model: Salesforce/blip-image-captioning-base
+method: lora
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - query
+    - key
+    - value
+    - dense
+
+train:
+  epochs: 2
+  batch_size: 8
+  grad_accum: 4
+  lr: 1.0e-4
+  weight_decay: 0.01
+  scheduler: cosine
+  warmup_ratio: 0.05
+  precision: fp16
+  image_size: 384
+  max_length: 40
+
+eval:
+  every_steps: 500
+  metric: cider
+  val_samples: 500
+
+tracking:
+  system: mlflow  # or wandb, none
+  experiment_name: vision-ai-studio-blip-lora

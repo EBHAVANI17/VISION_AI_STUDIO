@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from vision_ai_studio.image import to_png
+from vision_ai_studio.schemas import DetectedObject
 from vision_ai_studio.viz.palette import colorize_mask
 
 
@@ -46,7 +47,27 @@ def render_pngs(
     labels: Sequence[str],
     *,
     alpha: float = 0.45,
+    detections: Sequence[DetectedObject] = (),
 ) -> tuple[bytes, bytes]:
     """Return (overlay_png, mask_png)."""
     mask = align_mask(mask, image.size)
-    return to_png(overlay_image(image, mask, labels, alpha=alpha)), to_png(mask_image(mask, labels))
+    overlay = overlay_image(image, mask, labels, alpha=alpha)
+    if detections:
+        overlay = draw_bounding_boxes(overlay, detections)
+    return to_png(overlay), to_png(mask_image(mask, labels))
+
+
+def draw_bounding_boxes(
+    image: Image.Image,
+    detections: Sequence[DetectedObject],
+    color: tuple[int, int, int] = (255, 215, 0),
+) -> Image.Image:
+    """Draw bounding boxes and class tags onto the image."""
+    annotated = image.copy().convert("RGB")
+    draw = ImageDraw.Draw(annotated)
+    for det in detections:
+        xmin, ymin, xmax, ymax = det.box
+        draw.rectangle([xmin, ymin, xmax, ymax], outline=color, width=3)
+        tag = f"{det.label} {det.confidence:.2f}"
+        draw.text((xmin + 4, max(0, ymin - 15)), tag, fill=color)
+    return annotated
