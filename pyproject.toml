@@ -7,7 +7,7 @@ name = "vision-ai-studio"
 version = "0.1.0"
 description = "Image segmentation, captioning, translation and speech in a single pipeline"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 license = { text = "MIT" }
 authors = [{ name = "Bhavani E" }]
 keywords = ["computer-vision", "segmentation", "captioning", "blip", "deeplab", "segformer"]

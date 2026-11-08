@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0
+torchvision>=0.17.0
+transformers>=4.44.0,<6
+huggingface-hub>=0.23.0
+gTTS>=2.5.0
+deep-translator>=1.11.4
+pillow>=10.0.0
+numpy>=1.26.0
+streamlit>=1.40.0
