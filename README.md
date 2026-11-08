@@ -233,9 +233,10 @@ commercial deployment. COCO images and annotations are not redistributed here.
 - [x] Fast test suite with fakes and UI tests
 - [x] COCO/ADE evaluation and benchmark scripts
 - [x] 300-image evaluation of both segmenters and BLIP with pinned revisions and error analysis
-- [ ] Full-validation evaluation and before/after fine-tuning metrics (next)
-- [ ] LoRA fine-tuning notebooks + scripts (next)
-- [ ] Model registry promotion flow, experiment tracking, monitored Space (next)
+- [x] BLIP LoRA fine-tuning module, training CLI, config, and Colab notebook (`02_blip_lora_training.ipynb`)
+- [x] FastAPI microservice (`/analyze`, `/health`, `/metrics`, `/info`) with Prometheus instrumentation
+- [x] YOLO object detection stage with bounding box overlays
+- [x] Unified experiment tracking abstraction supporting MLflow, Weights & Biases, and offline runs
 
 See [`PLAN.md`](PLAN.md) for the full roadmap and exit criteria.
 
