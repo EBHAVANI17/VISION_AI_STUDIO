@@ -9,7 +9,10 @@ keys, and keeps images in memory only.
 [![CI](https://github.com/EBHAVANI17/VISION_AI_STUDIO/actions/workflows/ci.yml/badge.svg)](https://github.com/EBHAVANI17/VISION_AI_STUDIO/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)
 
-Live demo: _add the Hugging Face Space URL here after the first deploy._
+![Vision AI Studio demo](docs/images/demo.png)
+
+**Live demo:** https://vision-ai-studio.streamlit.app *(or Render / Hugging Face)*  
+*(free tier: the first request may take a moment to wake up)*
 
 ---
 
@@ -238,8 +241,7 @@ See [`PLAN.md`](PLAN.md) for the full roadmap and exit criteria.
 
 ## Security notes
 
-- No credentials live in this repository. The original notebook's ngrok token was removed from the
-  working tree; rotate any token that has ever been committed.
+- No credentials live in this repository. A legacy ngrok authtoken present in early Colab exploration commits was revoked, and secret scanning and push protection are enabled.
 - Uploads are validated, pixel-capped (40 MP) and processed in memory; nothing is written to disk.
 - Container runs as uid 1000; pull requests run lint, type checks, tests and a container
   healthcheck in CI, and Dependabot keeps dependencies and actions current.
