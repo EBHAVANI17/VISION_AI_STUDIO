@@ -10,4 +10,4 @@ numpy>=1.26.0
 streamlit>=1.40.0
 fastapi>=0.100.0
 peft>=0.11.0
-ultralytics>=8.0.0
+ultralytics>=8.4.208
